@@ -96,6 +96,8 @@ list. Updates can still arrive, and a Fire OS update may switch things back on. 
 - **D-pad:** Up and Down always move exactly one row, and the ends of a row never jump elsewhere.
 - **Back** returns to the dock. **Home** while already on Glass does the same.
 - **Menu** (☰) on a tile opens that app's system page (force stop, clear cache, uninstall).
+- **Hold OK** on a dock tile to move it: Left/Right reorder, OK drops it, Down takes it out of the dock.
+  Hold OK on an app in the grid to add it to the dock (if the dock is full, its last app moves back to the grid).
 - Remembers the last focused tile when you come back from an app.
 - Native Java + RecyclerView: about a 4 MB APK and 57 MB of RAM.
 

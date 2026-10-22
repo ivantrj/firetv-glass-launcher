@@ -50,7 +50,7 @@ final class AppLoader {
         if (dock.isEmpty()) dock = Arrays.asList(context.getResources().getStringArray(R.array.dock_packages));
         for (String pkg : dock) {
             AppInfo app = apps.remove(pkg);
-            if (app != null && result.dock.size() < 4) result.dock.add(app);
+            if (app != null && result.dock.size() < HomeActivity.MAX_DOCK) result.dock.add(app);
         }
         result.grid.addAll(apps.values());
         Collator collator = Collator.getInstance();

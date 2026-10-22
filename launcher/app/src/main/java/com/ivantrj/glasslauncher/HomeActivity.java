@@ -38,6 +38,8 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
@@ -55,6 +57,7 @@ public class HomeActivity extends Activity {
 
     private static final int TOP = 0, DOCK = 1, GRID = 2;
     private static final int COLUMNS = 4;
+    static final int MAX_DOCK = 4;
     private static final int PILL_INPUTS = 0, PILL_WIFI = 1, PILL_SETTINGS = 2;
     private static final int NEUTRAL_GLOW = 0xFF8E8E9E;
 
@@ -81,6 +84,9 @@ public class HomeActivity extends Activity {
 
     private boolean menuOpen;
     private int menuIdx;
+
+    // Select fires on release so a hold can become a long press; moving = a dock tile is lifted
+    private boolean selectDown, longPressed, moving;
     private List<InputsMenu.Entry> menuEntries = new ArrayList<>();
 
     private boolean stopped = true;
@@ -192,6 +198,8 @@ public class HomeActivity extends Activity {
     @Override
     protected void onPause() {
         super.onPause();
+        if (moving) endMove();
+        selectDown = false;
         SharedPreferences.Editor e = prefs.edit()
                 .putInt("zone", zone)
                 .putInt("dockIdx", dockIdx)
@@ -276,9 +284,29 @@ public class HomeActivity extends Activity {
     public boolean dispatchKeyEvent(KeyEvent event) {
         int key = event.getKeyCode();
         if (!handles(key)) return super.dispatchKeyEvent(event);
+        if (isSelect(key) && !menuOpen && !moving) {
+            // Tap opens on release; holding past the first key repeat (~0.5 s) is a long press
+            if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                if (event.getRepeatCount() == 0) {
+                    selectDown = true;
+                    longPressed = false;
+                } else if (selectDown && !longPressed) {
+                    longPressed = true;
+                    longPress();
+                }
+            } else if (event.getAction() == KeyEvent.ACTION_UP) {
+                if (selectDown && !longPressed && !event.isCanceled()) activate();
+                selectDown = false;
+            }
+            return true;
+        }
         if (event.getAction() != KeyEvent.ACTION_DOWN) return true;
         if (menuOpen) {
             menuKey(key);
+            return true;
+        }
+        if (moving) {
+            if (event.getRepeatCount() == 0) moveKey(key); // ignore the held select that started the move
             return true;
         }
         switch (key) {
@@ -288,9 +316,13 @@ public class HomeActivity extends Activity {
             case KeyEvent.KEYCODE_DPAD_DOWN: down(); break;
             case KeyEvent.KEYCODE_BACK: back(); break;
             case KeyEvent.KEYCODE_MENU: openAppInfo(); break;
-            default: if (event.getRepeatCount() == 0) activate(); break;
         }
         return true;
+    }
+
+    private static boolean isSelect(int key) {
+        return key == KeyEvent.KEYCODE_DPAD_CENTER || key == KeyEvent.KEYCODE_ENTER
+                || key == KeyEvent.KEYCODE_NUMPAD_ENTER || key == KeyEvent.KEYCODE_BUTTON_A;
     }
 
     private static boolean handles(int key) {
@@ -382,6 +414,86 @@ public class HomeActivity extends Activity {
                 Uri.fromParts("package", app.packageName, null)));
     }
 
+    // ---------------------------------------------------------------- dock editing
+
+    /**
+     * Long press on a dock tile lifts it so Left/Right reorder the dock. Long press on a
+     * grid tile adds it to the end of the dock (the last dock app goes back to the grid
+     * if the dock is full) and lifts it there. The order is saved to dock.txt, the same
+     * file configure.sh writes.
+     */
+    private void longPress() {
+        selectDown = false;
+        if (zone == GRID && gridIdx < gridApps.size()) {
+            AppInfo app = gridApps.get(gridIdx);
+            if (dockApps.size() >= MAX_DOCK) {
+                AppInfo out = dockApps.remove(dockApps.size() - 1);
+                Toast.makeText(this, out.label + " moved to the apps below", Toast.LENGTH_SHORT).show();
+            }
+            dockApps.add(app);
+            dockIdx = dockApps.size() - 1;
+            zone = DOCK;
+            moving = true;
+            saveDock();
+            loadApps(); // rebuilds dock and grid from dock.txt; moving stays on
+        } else if (zone == DOCK && dockIdx < dockApps.size()) {
+            moving = true;
+            applyFocus(true);
+        } else {
+            return;
+        }
+        Toast.makeText(this, "Left/Right to move · OK to drop · Down to remove", Toast.LENGTH_LONG).show();
+    }
+
+    private void moveKey(int key) {
+        switch (key) {
+            case KeyEvent.KEYCODE_DPAD_LEFT: swapDock(dockIdx - 1); break;
+            case KeyEvent.KEYCODE_DPAD_RIGHT: swapDock(dockIdx + 1); break;
+            case KeyEvent.KEYCODE_DPAD_DOWN: // take it out of the dock, back to the grid
+                if (dockApps.size() == 1) break; // an empty dock.txt would bring back the defaults
+                AppInfo app = dockApps.remove(dockIdx);
+                dockIdx = clamp(dockIdx, 0, dockApps.size() - 1);
+                moving = false;
+                restoreGridPkg = app.packageName;
+                saveDock();
+                loadApps();
+                break;
+            case KeyEvent.KEYCODE_MENU:
+                break;
+            default: // OK, Back, Up drop it where it is
+                endMove();
+        }
+    }
+
+    private void swapDock(int to) {
+        if (to < 0 || to >= dockApps.size()) return;
+        dockApps.add(to, dockApps.remove(dockIdx));
+        View cell = dockRow.getChildAt(dockIdx);
+        dockRow.removeViewAt(dockIdx);
+        dockRow.addView(cell, to);
+        cell.setTranslationY(0);
+        dockIdx = to;
+        afterLayout(() -> applyFocus(true));
+    }
+
+    private void endMove() {
+        moving = false;
+        saveDock();
+        applyFocus(true);
+    }
+
+    private void saveDock() {
+        StringBuilder sb = new StringBuilder();
+        for (AppInfo app : dockApps) sb.append(app.packageName).append('\n');
+        File file = new File(getFilesDir(), "dock.txt");
+        try (FileWriter w = new FileWriter(file)) {
+            w.write(sb.toString());
+        } catch (IOException e) {
+            Toast.makeText(this, "Couldn't save the dock", Toast.LENGTH_SHORT).show();
+        }
+        loadedConfigStamp = configStamp(); // our own write, not an outside edit
+    }
+
     private AppInfo focusedApp() {
         if (zone == DOCK && dockIdx < dockApps.size()) return dockApps.get(dockIdx);
         if (zone == GRID && gridIdx < gridApps.size()) return gridApps.get(gridIdx);
@@ -400,7 +512,10 @@ public class HomeActivity extends Activity {
 
     private void applyFocus(boolean animate) {
         for (int i = 0; i < dockRow.getChildCount(); i++) {
-            Tiles.setFocused(dockRow.getChildAt(i), zone == DOCK && i == dockIdx, animate);
+            View cell = dockRow.getChildAt(i);
+            Tiles.setFocused(cell, zone == DOCK && i == dockIdx, animate);
+            float lift = moving && i == dockIdx ? -liftOffset() : 0;
+            cell.animate().translationY(lift).setDuration(animate ? 200 : 0).setInterpolator(ease).start();
         }
         adapter.setFocused(zone == GRID ? gridIdx : RecyclerView.NO_POSITION);
         for (int i = 0; i < pills.length; i++) {
@@ -451,7 +566,7 @@ public class HomeActivity extends Activity {
             View cell = dockRow.getChildAt(dockIdx);
             View tile = cell.findViewById(R.id.tile);
             l = dockRow.getLeft() + cell.getLeft() + tile.getLeft();
-            t = dockRow.getTop() + cell.getTop() + tile.getTop();
+            t = dockRow.getTop() + cell.getTop() + tile.getTop() - (moving ? liftOffset() : 0);
         } else {
             // Computed from the grid geometry and the scroll target, so the highlight
             // heads straight for the final spot while the grid is still scrolling
@@ -676,6 +791,8 @@ public class HomeActivity extends Activity {
         });
         root.requestLayout();
     }
+
+    private float liftOffset() { return dp(14); }
 
     private int rowHeight() { return Math.round(dp(144)); }
 
