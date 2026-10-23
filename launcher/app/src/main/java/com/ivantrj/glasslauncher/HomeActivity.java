@@ -367,10 +367,24 @@ public class HomeActivity extends Activity {
         if (zone == TOP) {
             if (topIdx == PILL_INPUTS) openMenu();
             else if (topIdx == PILL_WIFI) launch(new Intent(Settings.ACTION_WIFI_SETTINGS));
-            else launch(new Intent(Settings.ACTION_SETTINGS));
+            else openSettings();
         } else {
             AppInfo app = focusedApp();
             if (app != null) launch(app.launchIntent);
+        }
+    }
+
+    /**
+     * On Fire OS 8, ACTION_SETTINGS only brings up Amazon's home screen, which the Home
+     * redirect then covers. Open Amazon's Settings grid directly; other builds fall back.
+     */
+    private void openSettings() {
+        Intent amazon = new Intent().setClassName("com.amazon.tv.launcher",
+                "com.amazon.tv.launcher.ui.MainSettingsActivity");
+        try {
+            startActivity(amazon.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        } catch (ActivityNotFoundException | SecurityException e) {
+            launch(new Intent(Settings.ACTION_SETTINGS));
         }
     }
 
