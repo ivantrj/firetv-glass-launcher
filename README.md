@@ -147,6 +147,10 @@ switched on by `install.sh`). Whenever the Amazon launcher comes to the front (H
 boot, an app exiting), it brings Glass straight back. It only listens to window events from
 the Amazon launcher's package; there's no polling.
 
+Amazon's Settings grid lives in the same package (`MainSettingsActivity`), and the standard
+Settings intent only brings up Amazon's home, so the service reacts to the home activity alone
+and Glass's Settings pill opens `MainSettingsActivity` directly.
+
 Side effects:
 
 - The Amazon home screen flashes for about 0.4 s before Glass appears.

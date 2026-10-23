@@ -18,6 +18,9 @@ import android.view.accessibility.AccessibilityEvent;
 public class HomeButtonService extends AccessibilityService {
 
     private static final String AMAZON_LAUNCHER = "com.amazon.tv.launcher";
+    // Fire OS shows its Settings grid from the launcher package too (MainSettingsActivity),
+    // so only the home screen itself is redirected
+    private static final String AMAZON_HOME = "com.amazon.tv.launcher.ui.HomeActivity";
     private long lastLaunch;
 
     @Override
@@ -30,7 +33,8 @@ public class HomeButtonService extends AccessibilityService {
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
         if (event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
-                && AMAZON_LAUNCHER.contentEquals(event.getPackageName())) {
+                && AMAZON_LAUNCHER.contentEquals(event.getPackageName())
+                && String.valueOf(event.getClassName()).startsWith(AMAZON_HOME)) {
             openGlass();
         }
     }
