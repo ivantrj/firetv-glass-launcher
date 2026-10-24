@@ -1,0 +1,4 @@
+The files tv.py, b64push.py and requirements.txt in this folder were copied
+unchanged from CleanYourTV 2.7.0: https://github.com/Gathin23/cleanyourtv
+They are used for the Windows setup of this separate Fire OS 7 port.
+See LICENSE-CLEANYOURTV. The adbkey folder is private and must never be shared.

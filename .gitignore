@@ -22,3 +22,10 @@ backup/
 shots/
 debloat/disable-log.txt
 debloat/disabled-now.txt
+
+# Fire OS 7 setup records and ADB credentials contain private device data.
+local-state/
+tools/adb/adbkey/
+*.apk
+*.aab
+*.keystore

@@ -17,8 +17,6 @@ import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.Uri;
-import android.net.wifi.WifiInfo;
-import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -88,7 +86,6 @@ public class HomeActivity extends Activity {
     private long loadedConfigStamp;
     private float density;
     private SharedPreferences prefs;
-    private WifiManager wifiManager;
     private ConnectivityManager connectivity;
     private final Handler main = new Handler(Looper.getMainLooper());
     private final ExecutorService io = Executors.newSingleThreadExecutor();
@@ -102,7 +99,6 @@ public class HomeActivity extends Activity {
         setContentView(R.layout.activity_home);
         density = getResources().getDisplayMetrics().density;
         prefs = getSharedPreferences("focus", MODE_PRIVATE);
-        wifiManager = getApplicationContext().getSystemService(WifiManager.class);
         connectivity = getSystemService(ConnectivityManager.class);
 
         root = findViewById(R.id.root);
@@ -367,6 +363,7 @@ public class HomeActivity extends Activity {
         if (zone == TOP) {
             if (topIdx == PILL_INPUTS) openMenu();
             else if (topIdx == PILL_WIFI) launch(new Intent(Settings.ACTION_WIFI_SETTINGS));
+            else if (BuildConfig.FIRE_OS_7) openSettingsMenu();
             else launch(new Intent(Settings.ACTION_SETTINGS));
         } else {
             AppInfo app = focusedApp();
@@ -515,7 +512,30 @@ public class HomeActivity extends Activity {
     // ---------------------------------------------------------------- inputs menu
 
     private void openMenu() {
-        menuEntries = InputsMenu.load(this);
+        showMenu(InputsMenu.load(this));
+    }
+
+    private void openSettingsMenu() {
+        List<InputsMenu.Entry> entries = new ArrayList<>();
+        String[][] pages = {
+                {"My Fire TV", "com.amazon.device.settings.action.DEVICE"},
+                {"Preferences", "com.amazon.device.settings.action.PREFERENCES"},
+                {"Display & Sounds", Settings.ACTION_DISPLAY_SETTINGS},
+                {"Applications", "com.amazon.device.settings.action.APPLICATIONS"},
+                {"Controllers & Bluetooth", "android.settings.CONTROLLERS_SETTINGS"},
+                {"Accessibility", "com.amazon.device.settings.action.ACCESSIBILITY_CLOSED_CAPTION"}
+        };
+        for (String[] p : pages) {
+            Intent intent = new Intent(p[1]).setPackage("com.amazon.tv.settings.v2");
+            if (intent.resolveActivity(getPackageManager()) != null) {
+                entries.add(new InputsMenu.Entry(p[0], intent));
+            }
+        }
+        showMenu(entries);
+    }
+
+    private void showMenu(List<InputsMenu.Entry> entries) {
+        menuEntries = entries;
         inputsMenu.removeAllViews();
         LayoutInflater inflater = LayoutInflater.from(this);
         menuIdx = -1;
@@ -531,7 +551,7 @@ public class HomeActivity extends Activity {
         updateMenuSelection();
 
         inputsMenu.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
-        View pill = pills[PILL_INPUTS];
+        View pill = pills[topIdx];
         float x = pillRow.getLeft() + pill.getLeft();
         x = Math.min(x, root.getWidth() - inputsMenu.getMeasuredWidth() - dp(24));
         float y = pillRow.getTop() + pill.getBottom() + dp(12);
@@ -608,13 +628,7 @@ public class HomeActivity extends Activity {
         } else if (caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) {
             text = "Ethernet";
         } else if (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
-            WifiInfo info = wifiManager.getConnectionInfo();
-            String ssid = info == null ? null : info.getSSID();
-            if (ssid == null || ssid.equals(WifiManager.UNKNOWN_SSID) || ssid.isEmpty()) {
-                text = "Wi-Fi"; // name hidden: location permission or location mode is off
-            } else {
-                text = ssid.startsWith("\"") && ssid.endsWith("\"") ? ssid.substring(1, ssid.length() - 1) : ssid;
-            }
+            text = "Wi-Fi"; // Connection status without location access or exposing the SSID.
         } else {
             text = "Connected";
         }

@@ -13,6 +13,10 @@ hand, and no new apps beyond the launcher.
 
 ## Quick start
 
+**Fire OS 7 / Android 9:** see [Fire OS 7 support](docs/fire-os7.md) for the
+opt-in source build and Windows setup. Tested on Fire TV Stick Lite (AFTSS),
+firmware PS7717.5741N. The standard build and shell scripts still target Fire OS 8.
+
 You need a Mac on the same Wi-Fi as your Fire TV. To build the launcher you also need
 [Android Studio](https://developer.android.com/studio) (install it and open it once).
 

@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.media.tv.TvContract;
 import android.media.tv.TvInputInfo;
 import android.media.tv.TvInputManager;
+import android.net.Uri;
 import android.text.TextUtils;
 
 import java.util.ArrayList;
@@ -49,6 +50,12 @@ final class InputsMenu {
         }
 
         Intent liveTv = context.getPackageManager().getLeanbackLaunchIntentForPackage("com.amazon.tv.livetv");
+        if (liveTv == null) {
+            // Fire OS 7 exposes the guide as a deep link, not a leanback app.
+            Intent guide = new Intent(Intent.ACTION_VIEW, Uri.parse("livetv://showEpg"))
+                    .setPackage("com.amazon.tv.livetv");
+            if (guide.resolveActivity(context.getPackageManager()) != null) liveTv = guide;
+        }
         if (liveTv != null) out.add(new Entry("Live TV", liveTv.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)));
 
         if (out.isEmpty()) out.add(new Entry(context.getString(R.string.no_inputs), null));
