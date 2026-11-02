@@ -20,6 +20,7 @@
         <item>com.amazon.hedwig</item>
         <item>com.amazon.smarthomemapviewapp</item>
         <item>com.amazon.ssm</item>
+        <item>com.amazon.tv.quicksettings.ui</item>
         <item>com.amazon.whasettings</item>
     </string-array>
 </resources>

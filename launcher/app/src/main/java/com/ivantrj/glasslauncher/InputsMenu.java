@@ -51,7 +51,10 @@ final class InputsMenu {
         Intent liveTv = context.getPackageManager().getLeanbackLaunchIntentForPackage("com.amazon.tv.livetv");
         if (liveTv != null) out.add(new Entry("Live TV", liveTv.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)));
 
-        if (out.isEmpty()) out.add(new Entry(context.getString(R.string.no_inputs), null));
+        // Fire OS only lets phones find the TV while this screen is open; its usual way in
+        // (hold Home) is taken by HomeButtonService.
+        out.add(new Entry("Screen mirroring", new Intent().setClassName("com.amazon.cast.sink",
+                "com.amazon.cast.sink.DisplayMirroringSinkActivity").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)));
         return out;
     }
 

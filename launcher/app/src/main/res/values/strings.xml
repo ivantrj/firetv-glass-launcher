@@ -2,7 +2,6 @@
     <string name="app_name">Glass</string>
     <string name="inputs">Inputs</string>
     <string name="settings">Settings</string>
-    <string name="no_inputs">No external inputs on this device</string>
     <string name="a11y_label">Glass Home button</string>
     <string name="a11y_description">Opens the Glass home screen when you press Home, instead of the Amazon launcher.</string>
 </resources>

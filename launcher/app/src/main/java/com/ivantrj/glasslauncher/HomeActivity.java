@@ -367,7 +367,9 @@ public class HomeActivity extends Activity {
         if (zone == TOP) {
             if (topIdx == PILL_INPUTS) openMenu();
             else if (topIdx == PILL_WIFI) launch(new Intent(Settings.ACTION_WIFI_SETTINGS));
-            else launch(new Intent(Settings.ACTION_SETTINGS));
+            // Not ACTION_SETTINGS: on Fire OS that passes through Amazon's home screen, which
+            // HomeButtonService redirects, so Settings would bounce straight back to Glass.
+            else launch(new Intent(Intent.ACTION_MAIN).addCategory("android.intent.category.LEANBACK_SETTINGS"));
         } else {
             AppInfo app = focusedApp();
             if (app != null) launch(app.launchIntent);
