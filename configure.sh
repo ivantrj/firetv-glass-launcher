@@ -5,7 +5,9 @@
 #   ./configure.sh hide org.videolan.vlc ...  hide apps from the grid (adds to the built-in list)
 #   ./configure.sh hide reset                 show them again
 #   ./configure.sh wallpaper ~/Pictures/x.jpg JPG or PNG, shown dimmed behind everything
-#   ./configure.sh wallpaper none             back to pitch black
+#   ./configure.sh wallpaper none             back to the sky
+#   ./configure.sh location 51.5 -0.13        latitude longitude for the sky's sunrise and sunset
+#   ./configure.sh location reset             guess from the time zone
 #   ./configure.sh apps                       list installed package names
 # Files live in Glass's private folder and are written with run-as (works for debug builds).
 set -e
@@ -38,8 +40,11 @@ case "$1" in
       put "$2" $name
     fi
     reload ;;
+  location)
+    if [ "$2" = reset ] || [ -z "$2" ]; then remove location.txt; else printf '%s %s\n' "$2" "$3" > "$TMP"; put "$TMP" location.txt; fi
+    reload ;;
   apps)
     "$TV" shell "pm list packages" | sed 's/^package://' | sort ;;
   *)
-    sed -n '2,10p' "$0"; exit 1 ;;
+    sed -n '2,12p' "$0"; exit 1 ;;
 esac

@@ -8,6 +8,11 @@
     android:background="@android:color/black"
     android:clipChildren="false">
 
+    <com.ivantrj.glasslauncher.SkyView
+        android:id="@+id/sky"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
     <ImageView
         android:id="@+id/wallpaper"
         android:layout_width="match_parent"

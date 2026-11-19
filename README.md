@@ -94,6 +94,8 @@ list. Updates can still arrive, and a Fire OS update may switch things back on. 
 - **Dock:** your four favourite apps. The big title and the background glow follow the focused app.
 - **Grid:** every other app, alphabetical, 4 columns. Press Down from the dock.
 - **D-pad:** Up and Down always move exactly one row, and the ends of a row never jump elsewhere.
+- **Sky:** the background follows the real sun: blue by day, a sunset gradient at the actual
+  sunset, and a dark sky with faint, now-and-then twinkling stars at night.
 - **Back** returns to the dock. **Home** while already on Glass does the same.
 - **Menu** (☰) on a tile opens that app's system page (force stop, clear cache, uninstall).
 - Remembers the last focused tile when you come back from an app.
@@ -112,8 +114,15 @@ All of these take effect immediately, no rebuild:
 ```
 
 ```bash
-./configure.sh wallpaper ~/Pictures/mountains.jpg   # scaled and dimmed; "none" for black
+./configure.sh wallpaper ~/Pictures/mountains.jpg   # scaled and dimmed; "none" for the sky
 ```
+
+```bash
+./configure.sh location 51.5 -0.13   # your latitude and longitude, for sunrise and sunset
+```
+
+Fire TV has no location fix, so without `location` the sky guesses from the time zone and can be
+off by up to about half an hour.
 
 ```bash
 ./configure.sh apps    # list installed package names

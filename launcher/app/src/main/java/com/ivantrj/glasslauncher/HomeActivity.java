@@ -37,10 +37,14 @@ import android.widget.Toast;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
+import java.util.TimeZone;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -65,6 +69,7 @@ public class HomeActivity extends Activity {
     private LinearLayout dockRow, inputsMenu;
     private RecyclerView grid;
     private ImageView wallpaper;
+    private SkyView sky;
     private GridAdapter adapter;
 
     private final List<AppInfo> dockApps = new ArrayList<>();
@@ -117,6 +122,7 @@ public class HomeActivity extends Activity {
         grid = findViewById(R.id.grid);
         inputsMenu = findViewById(R.id.inputsMenu);
         wallpaper = findViewById(R.id.wallpaper);
+        sky = findViewById(R.id.sky);
         pillRow = findViewById(R.id.pills);
         pills = new View[] {findViewById(R.id.pillInputs), findViewById(R.id.pillWifi), findViewById(R.id.pillSettings)};
 
@@ -177,6 +183,7 @@ public class HomeActivity extends Activity {
         connectivity.registerDefaultNetworkCallback(networkCallback);
         updateGreeting();
         updateWifi();
+        loadLocation();
         loadWallpaper();
         if (configStamp() != loadedConfigStamp) loadApps(); // dock.txt / hidden.txt edited
     }
@@ -214,6 +221,7 @@ public class HomeActivity extends Activity {
         if (intent.getBooleanExtra("reload", false)) { // sent by configure.sh
             loadApps();
             wallpaperStamp = -1;
+            loadLocation();
             loadWallpaper();
             return;
         }
@@ -583,7 +591,11 @@ public class HomeActivity extends Activity {
     // ---------------------------------------------------------------- clock, greeting, wifi, wallpaper
 
     private final BroadcastReceiver timeReceiver = new BroadcastReceiver() {
-        @Override public void onReceive(Context c, Intent i) { updateGreeting(); }
+        @Override public void onReceive(Context c, Intent i) {
+            updateGreeting();
+            if (Intent.ACTION_TIMEZONE_CHANGED.equals(i.getAction())) loadLocation();
+            else sky.update();
+        }
     };
 
     private void updateGreeting() {
@@ -621,6 +633,26 @@ public class HomeActivity extends Activity {
         if (!text.contentEquals(wifiName.getText())) wifiName.setText(text);
     }
 
+    /**
+     * Where the sky's sunrise and sunset are for: "latitude longitude" in location.txt
+     * (see configure.sh). Fire TV has no location fix, so without the file the longitude
+     * comes from the time zone (sunset off by up to about half an hour) at latitude 40.
+     */
+    private void loadLocation() {
+        double lat = 40, lon = TimeZone.getDefault().getRawOffset() / 3600000.0 * 15;
+        File f = new File(getFilesDir(), "location.txt");
+        if (f.isFile()) {
+            try (BufferedReader r = new BufferedReader(new FileReader(f))) {
+                String[] parts = r.readLine().trim().split("[\\s,]+");
+                lat = Double.parseDouble(parts[0]);
+                lon = Double.parseDouble(parts[1]);
+            } catch (IOException | RuntimeException ignored) {
+                // malformed file: keep the time-zone guess
+            }
+        }
+        sky.setLocation(lat, lon);
+    }
+
     /** Optional wallpaper: wallpaper.jpg or wallpaper.png in the app's files dir (see configure.sh). */
     private void loadWallpaper() {
         File file = null;
@@ -634,6 +666,7 @@ public class HomeActivity extends Activity {
         if (file == null) {
             wallpaper.setImageDrawable(null);
             wallpaper.setVisibility(View.GONE);
+            sky.setVisibility(View.VISIBLE);
             return;
         }
         String path = file.getAbsolutePath();
@@ -651,6 +684,7 @@ public class HomeActivity extends Activity {
                 wallpaper.setImageBitmap(bmp);
                 wallpaper.setColorFilter(Color.argb(115, 0, 0, 0), PorterDuff.Mode.SRC_ATOP);
                 wallpaper.setVisibility(bmp == null ? View.GONE : View.VISIBLE);
+                sky.setVisibility(bmp == null ? View.VISIBLE : View.GONE); // the photo covers the sky
             });
         });
     }
