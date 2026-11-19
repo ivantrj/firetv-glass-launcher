@@ -70,6 +70,7 @@ public class HomeActivity extends Activity {
     private RecyclerView grid;
     private ImageView wallpaper;
     private SkyView sky;
+    private boolean skyOn, wallpaperShown;
     private GridAdapter adapter;
 
     private final List<AppInfo> dockApps = new ArrayList<>();
@@ -183,7 +184,7 @@ public class HomeActivity extends Activity {
         connectivity.registerDefaultNetworkCallback(networkCallback);
         updateGreeting();
         updateWifi();
-        loadLocation();
+        loadSky();
         loadWallpaper();
         if (configStamp() != loadedConfigStamp) loadApps(); // dock.txt / hidden.txt edited
     }
@@ -221,7 +222,7 @@ public class HomeActivity extends Activity {
         if (intent.getBooleanExtra("reload", false)) { // sent by configure.sh
             loadApps();
             wallpaperStamp = -1;
-            loadLocation();
+            loadSky();
             loadWallpaper();
             return;
         }
@@ -593,8 +594,8 @@ public class HomeActivity extends Activity {
     private final BroadcastReceiver timeReceiver = new BroadcastReceiver() {
         @Override public void onReceive(Context c, Intent i) {
             updateGreeting();
-            if (Intent.ACTION_TIMEZONE_CHANGED.equals(i.getAction())) loadLocation();
-            else sky.update();
+            if (Intent.ACTION_TIMEZONE_CHANGED.equals(i.getAction())) loadSky();
+            else if (skyOn) sky.update();
         }
     };
 
@@ -634,11 +635,25 @@ public class HomeActivity extends Activity {
     }
 
     /**
-     * Where the sky's sunrise and sunset are for: "latitude longitude" in location.txt
-     * (see configure.sh). Fire TV has no location fix, so without the file the longitude
-     * comes from the time zone (sunset off by up to about half an hour) at latitude 40.
+     * The optional sky background, off unless sky.txt says "on" (./configure.sh sky on)
+     * or sky_background is true in config.xml. Its sunrise and sunset are for the
+     * "latitude longitude" in location.txt; Fire TV has no location fix, so without the
+     * file the longitude comes from the time zone (sunset off by up to about half an hour)
+     * at latitude 40.
      */
-    private void loadLocation() {
+    private void loadSky() {
+        skyOn = getResources().getBoolean(R.bool.sky_background);
+        File onOff = new File(getFilesDir(), "sky.txt");
+        if (onOff.isFile()) {
+            try (BufferedReader r = new BufferedReader(new FileReader(onOff))) {
+                String line = r.readLine();
+                if (line != null) skyOn = line.trim().equals("on");
+            } catch (IOException ignored) {
+                // unreadable: keep the built-in default
+            }
+        }
+        showSky();
+        if (!skyOn) return;
         double lat = 40, lon = TimeZone.getDefault().getRawOffset() / 3600000.0 * 15;
         File f = new File(getFilesDir(), "location.txt");
         if (f.isFile()) {
@@ -651,6 +666,11 @@ public class HomeActivity extends Activity {
             }
         }
         sky.setLocation(lat, lon);
+    }
+
+    /** A wallpaper photo covers the sky, so the sky only runs without one. */
+    private void showSky() {
+        sky.setVisibility(skyOn && !wallpaperShown ? View.VISIBLE : View.GONE);
     }
 
     /** Optional wallpaper: wallpaper.jpg or wallpaper.png in the app's files dir (see configure.sh). */
@@ -666,7 +686,8 @@ public class HomeActivity extends Activity {
         if (file == null) {
             wallpaper.setImageDrawable(null);
             wallpaper.setVisibility(View.GONE);
-            sky.setVisibility(View.VISIBLE);
+            wallpaperShown = false;
+            showSky();
             return;
         }
         String path = file.getAbsolutePath();
@@ -684,7 +705,8 @@ public class HomeActivity extends Activity {
                 wallpaper.setImageBitmap(bmp);
                 wallpaper.setColorFilter(Color.argb(115, 0, 0, 0), PorterDuff.Mode.SRC_ATOP);
                 wallpaper.setVisibility(bmp == null ? View.GONE : View.VISIBLE);
-                sky.setVisibility(bmp == null ? View.VISIBLE : View.GONE); // the photo covers the sky
+                wallpaperShown = bmp != null;
+                showSky();
             });
         });
     }

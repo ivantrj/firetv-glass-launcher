@@ -5,7 +5,9 @@
 #   ./configure.sh hide org.videolan.vlc ...  hide apps from the grid (adds to the built-in list)
 #   ./configure.sh hide reset                 show them again
 #   ./configure.sh wallpaper ~/Pictures/x.jpg JPG or PNG, shown dimmed behind everything
-#   ./configure.sh wallpaper none             back to the sky
+#   ./configure.sh wallpaper none             back to black (or the sky, if on)
+#   ./configure.sh sky on                     sky background that follows the sun (off: black)
+#   ./configure.sh sky reset                  back to sky_background in res/values/config.xml
 #   ./configure.sh location 51.5 -0.13        latitude longitude for the sky's sunrise and sunset
 #   ./configure.sh location reset             guess from the time zone
 #   ./configure.sh apps                       list installed package names
@@ -40,11 +42,18 @@ case "$1" in
       put "$2" $name
     fi
     reload ;;
+  sky)
+    case "$2" in
+      on|off) printf '%s\n' "$2" > "$TMP"; put "$TMP" sky.txt ;;
+      reset) remove sky.txt ;;
+      *) echo "Usage: ./configure.sh sky on|off|reset"; exit 1 ;;
+    esac
+    reload ;;
   location)
     if [ "$2" = reset ] || [ -z "$2" ]; then remove location.txt; else printf '%s %s\n' "$2" "$3" > "$TMP"; put "$TMP" location.txt; fi
     reload ;;
   apps)
     "$TV" shell "pm list packages" | sed 's/^package://' | sort ;;
   *)
-    sed -n '2,12p' "$0"; exit 1 ;;
+    sed -n '2,14p' "$0"; exit 1 ;;
 esac
