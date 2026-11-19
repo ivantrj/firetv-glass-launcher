@@ -30,9 +30,17 @@ public class HomeButtonService extends AccessibilityService {
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
         if (event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
-                && AMAZON_LAUNCHER.contentEquals(event.getPackageName())) {
+                && AMAZON_LAUNCHER.contentEquals(event.getPackageName())
+                && !isSettings(event.getClassName())) {
             openGlass();
         }
+    }
+
+    // Fire OS's Settings screens live in the Amazon launcher's package
+    // (android.settings.SETTINGS resolves to com.amazon.tv.launcher/.ui.SettingsActivity,
+    // which opens .ui.MainSettingsActivity), so they must not count as the launcher.
+    private static boolean isSettings(CharSequence className) {
+        return className != null && className.toString().contains("Settings");
     }
 
     private void openGlass() {
