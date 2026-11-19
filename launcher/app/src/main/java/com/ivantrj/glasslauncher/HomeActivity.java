@@ -367,10 +367,26 @@ public class HomeActivity extends Activity {
         if (zone == TOP) {
             if (topIdx == PILL_INPUTS) openMenu();
             else if (topIdx == PILL_WIFI) launch(new Intent(Settings.ACTION_WIFI_SETTINGS));
-            else launch(new Intent(Settings.ACTION_SETTINGS));
+            else openSettings();
         } else {
             AppInfo app = focusedApp();
             if (app != null) launch(app.launchIntent);
+        }
+    }
+
+    /**
+     * From an app, android.settings.SETTINGS resolves to a Fire OS stub that opens the
+     * Amazon home first and Settings after it, so the Home redirect can bring Glass back
+     * over Settings. Open the Settings screen the remote's own Settings button opens.
+     */
+    private void openSettings() {
+        try {
+            startActivity(new Intent("amazon.intent.action.MAINSETTINGS")
+                    .addCategory("android.intent.category.MAINSETTINGS")
+                    .setClassName("com.amazon.tv.launcher", "com.amazon.tv.launcher.ui.MainSettingsActivity")
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        } catch (ActivityNotFoundException | SecurityException e) {
+            launch(new Intent(Settings.ACTION_SETTINGS));
         }
     }
 
