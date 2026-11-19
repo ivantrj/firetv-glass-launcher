@@ -57,6 +57,7 @@ public class SkyView extends View {
     private final Paint sunPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint glowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint moonPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint moonHalo = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Path moonLit = new Path();
     private final RectF arc = new RectF();
     private final float sunRadius, moonRadius;
@@ -82,8 +83,8 @@ public class SkyView extends View {
             starA[i] = 0.3f + r.nextFloat() * 0.6f;
         }
         starPaint.setColor(Color.WHITE);
-        sunRadius = 13 * density;
-        moonRadius = 12 * density;
+        sunRadius = 17 * density;
+        moonRadius = 16 * density;
     }
 
     /** Where the sky is for. Without one, Glass guesses the longitude from the time zone. */
@@ -118,6 +119,7 @@ public class SkyView extends View {
     protected void onSizeChanged(int w, int h, int ow, int oh) {
         skyPaint.setShader(null);
         glowPaint.setShader(null);
+        moonHalo.setShader(null);
     }
 
     @Override
@@ -175,12 +177,13 @@ public class SkyView extends View {
         float low = 1f - clamp(elevation / 12f); // orange near the horizon, pale yellow-white up high
         int core = mix(0xfffff4d8, 0xffffb15a, low);
         if (glowPaint.getShader() == null) {
-            glowPaint.setShader(new RadialGradient(x, y, sunRadius * 5,
-                    new int[] {(core & 0x00ffffff) | 0x66000000, (core & 0x00ffffff) | 0x1a000000, 0},
-                    new float[] {0f, 0.35f, 1f}, Shader.TileMode.CLAMP));
+            int rgb = core & 0x00ffffff; // halo: bright just outside the disc, a long faint falloff
+            glowPaint.setShader(new RadialGradient(x, y, sunRadius * 7,
+                    new int[] {rgb | 0x99000000, rgb | 0x55000000, rgb | 0x1c000000, rgb | 0x08000000, rgb},
+                    new float[] {0f, 0.16f, 0.32f, 0.6f, 1f}, Shader.TileMode.CLAMP));
         }
         glowPaint.setAlpha((int) (255 * alpha));
-        canvas.drawCircle(x, y, sunRadius * 5, glowPaint);
+        canvas.drawCircle(x, y, sunRadius * 7, glowPaint);
         sunPaint.setColor(core);
         sunPaint.setAlpha((int) (255 * alpha));
         canvas.drawCircle(x, y, sunRadius, sunPaint);
@@ -189,6 +192,15 @@ public class SkyView extends View {
     /** The moon at the top of the track, lit side right while waxing (northern sky). */
     private void drawMoon(Canvas canvas, int w, int h) {
         float x = TRACK_X * w, y = TRACK_TOP * h, r = moonRadius;
+        if (moonHalo.getShader() == null) {
+            moonHalo.setShader(new RadialGradient(x, y, r * 4.5f,
+                    new int[] {0x55dfe6f4, 0x22dfe6f4, 0x0adfe6f4, 0x00dfe6f4},
+                    new float[] {0.2f, 0.35f, 0.6f, 1f}, Shader.TileMode.CLAMP));
+        }
+        // Brighter halo the fuller the moon
+        float lit = (float) (1 - Math.cos(2 * Math.PI * moonAge)) / 2;
+        moonHalo.setAlpha((int) (255 * night * (0.3f + 0.7f * lit)));
+        canvas.drawCircle(x, y, r * 4.5f, moonHalo);
         moonPaint.setColor(0xffe8ecf4);
         moonPaint.setAlpha((int) (28 * night)); // the dark part, just visible
         canvas.drawCircle(x, y, r, moonPaint);
