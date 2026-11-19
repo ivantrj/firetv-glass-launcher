@@ -83,7 +83,7 @@ public class SkyView extends View {
             starA[i] = 0.3f + r.nextFloat() * 0.6f;
         }
         starPaint.setColor(Color.WHITE);
-        sunRadius = 17 * density;
+        sunRadius = 20 * density;
         moonRadius = 16 * density;
     }
 
