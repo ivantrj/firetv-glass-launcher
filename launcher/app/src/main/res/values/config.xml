@@ -22,4 +22,8 @@
         <item>com.amazon.ssm</item>
         <item>com.amazon.whasettings</item>
     </string-array>
+
+    <!-- Sky background that follows the sun, with sun, moon and stars, instead of black.
+         Off by default. Overridable without rebuilding: ./configure.sh sky on|off -->
+    <bool name="sky_background">false</bool>
 </resources>
